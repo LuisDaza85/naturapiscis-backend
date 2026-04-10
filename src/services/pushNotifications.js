@@ -1,26 +1,38 @@
 // backend/src/services/pushNotifications.js
-const { Expo } = require('expo-server-sdk');
+let Expo = null;
 
-const expo = new Expo();
+const getExpo = async () => {
+  if (!Expo) {
+    const mod = await import('expo-server-sdk');
+    Expo = mod.Expo;
+  }
+  return new Expo();
+};
 
 // ✅ Enviar notificación genérica
 const sendPushNotification = async (pushToken, title, body, data = {}) => {
-  if (!pushToken || !Expo.isExpoPushToken(pushToken)) {
-    console.log('⚠️ Push token inválido o ausente:', pushToken);
+  if (!pushToken) {
+    console.log('⚠️ Push token ausente');
     return;
   }
 
-  const message = {
-    to: pushToken,
-    sound: 'default',
-    title,
-    body,
-    data,
-    priority: 'high',
-    channelId: 'orders',
-  };
-
   try {
+    const expo = await getExpo();
+    if (!Expo.isExpoPushToken(pushToken)) {
+      console.log('⚠️ Push token inválido:', pushToken);
+      return;
+    }
+
+    const message = {
+      to: pushToken,
+      sound: 'default',
+      title,
+      body,
+      data,
+      priority: 'high',
+      channelId: 'orders',
+    };
+
     const chunks = expo.chunkPushNotifications([message]);
     for (const chunk of chunks) {
       const tickets = await expo.sendPushNotificationsAsync(chunk);
