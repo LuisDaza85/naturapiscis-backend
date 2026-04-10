@@ -1,0 +1,16 @@
+// estadistica.routes.js - Rutas para Estadísticas
+const express = require('express');
+const router = express.Router();
+const estadisticaController = require('./estadistica.controller');
+const { isAuthenticated, hasRole } = require('../../middlewares/auth.middleware');
+
+// Rutas para productor
+router.get('/productor', isAuthenticated, hasRole('productor'), estadisticaController.obtenerEstadisticasProductor);
+router.get('/ventas',    isAuthenticated, hasRole('productor'), estadisticaController.obtenerEstadisticasVentas);
+router.get('/productos', isAuthenticated, hasRole('productor'), estadisticaController.obtenerEstadisticasProductos);
+
+// Rutas admin
+router.get('/admin/productores', isAuthenticated, hasRole('admin'), estadisticaController.obtenerVentasPorProductor);
+router.get('/admin/resumen', isAuthenticated, hasRole('admin'), estadisticaController.obtenerResumenGlobal);
+
+module.exports = router;
