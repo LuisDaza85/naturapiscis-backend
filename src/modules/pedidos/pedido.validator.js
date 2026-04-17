@@ -48,11 +48,12 @@ const pedidoValidator = {
       .isInt({ min: 1 })
       .withMessage('ID de pedido inválido'),
 
+    // Aceptamos cualquier variante — el service la normaliza antes de validar
     body('nuevoEstado')
       .notEmpty()
       .withMessage('El nuevo estado es obligatorio')
-      .isIn(['pendiente', 'confirmado', 'en preparación', 'en preparacion', 'en camino', 'entregado', 'cancelado', 'preparando', 'listo_para_recoger', 'en_camino'])
-      .withMessage('Estado no válido'),
+      .isString()
+      .withMessage('El estado debe ser un texto'),
   ],
 
   obtenerPorId: [

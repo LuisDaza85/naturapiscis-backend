@@ -14,7 +14,7 @@ class RepartidorRepository {
       JOIN direcciones d      ON d.id = p.direccion_id
       JOIN usuarios uc        ON uc.id = p.consumidor_id
       JOIN detalles_pedido dp ON dp.pedido_id = p.id
-      WHERE p.estado IN ('listo_para_recoger','confirmado','preparando','en_camino','en camino','en preparacion','en preparación')
+      WHERE p.estado IN ('confirmado','preparando','listo_para_recoger','en_camino')
         AND (p.repartidor_id IS NULL OR p.repartidor_id = $1)
       GROUP BY p.id, d.direccion, d.ciudad, uc.nombre, uc.telefono
       ORDER BY p.fecha_pedido ASC

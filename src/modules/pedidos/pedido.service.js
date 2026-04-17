@@ -89,13 +89,12 @@ class PedidoService {
    */
   async actualizarEstado(pedidoId, nuevoEstado, usuarioId, rol) {
     try {
-      // Normalizar estado
+      // Normalizar estado (quitar tildes, minúsculas, espacios→guión_bajo)
       const estadoNormalizado = this.normalizarEstado(nuevoEstado);
 
-      // Validar que el estado es permitido
-      const estadosPermitidos = ['pendiente', 'confirmado', 'en preparacion', 'en camino', 'entregado', 'cancelado'];
-      if (!estadosPermitidos.includes(estadoNormalizado)) {
-        throw new AppError('Estado no válido', 400);
+      // Validar contra la lista canónica
+      if (!ESTADOS.ESTADOS_PEDIDO_LISTA.includes(estadoNormalizado)) {
+        throw new AppError(`Estado no válido: "${estadoNormalizado}". Estados permitidos: ${ESTADOS.ESTADOS_PEDIDO_LISTA.join(', ')}`, 400);
       }
 
       // Solo productores pueden actualizar estado
@@ -104,7 +103,7 @@ class PedidoService {
       }
 
       const pedido = await pedidoRepository.updateEstado(pedidoId, estadoNormalizado);
-      
+
       if (!pedido) {
         throw new AppError('Pedido no encontrado', 404);
       }
@@ -146,8 +145,10 @@ class PedidoService {
   normalizarEstado(estado) {
     return estado
       .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // quitar tildes
+      .replace(/\s+/g, '_')            // espacios → guión_bajo
+      .trim();
   }
 }
 
