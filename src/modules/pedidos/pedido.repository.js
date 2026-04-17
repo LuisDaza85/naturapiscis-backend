@@ -102,7 +102,7 @@ class PedidoRepository {
 
   async create(pedidoData) {
     return await db.transaction(async (tx) => {
-      const { usuario_id, direccion, metodo_envio, items, notas } = pedidoData;
+      const { usuario_id, direccion, metodo_envio, items, notas, parada_id } = pedidoData;
 
       let direccion_id = pedidoData.direccion_id;
       if (!direccion_id && direccion) {
@@ -130,9 +130,9 @@ class PedidoRepository {
       const total = subtotal + costo_envio;
 
       const pedido = await tx.query(
-        `INSERT INTO pedidos (consumidor_id, direccion_id, metodo_pago_id, metodo_envio, subtotal, costo_envio, total, estado, notas)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, 'pendiente', $8) RETURNING *`,
-        [usuario_id, direccion_id, metodo_pago_id_final, metodo_envio, subtotal, costo_envio, total, notas || null]
+        `INSERT INTO pedidos (consumidor_id, direccion_id, parada_id, metodo_pago_id, metodo_envio, subtotal, costo_envio, total, estado, notas)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pendiente', $9) RETURNING *`,
+        [usuario_id, direccion_id, parada_id || null, metodo_pago_id_final, metodo_envio, subtotal, costo_envio, total, notas || null]
       );
 
       const pedido_id = pedido[0].id;

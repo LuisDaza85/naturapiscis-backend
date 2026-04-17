@@ -66,7 +66,7 @@ class RepartidorRepository {
   }
 
   // ✅ Devuelve las 3 ubicaciones: conductor, productor y consumidor
-  async findTracking(pedidoId, consumidorId) {
+    async findTracking(pedidoId, consumidorId) {
     const result = await db.query(`
       SELECT
         p.id, p.estado, p.codigo_retiro, p.total,
@@ -79,16 +79,17 @@ class RepartidorRepository {
         up.lat AS productor_lat,
         up.lng AS productor_lng,
         up.nombre AS productor_nombre,
-        -- Dirección del consumidor (destino)
-        d.lat AS consumidor_lat,
-        d.lng AS consumidor_lng,
-        d.direccion AS consumidor_direccion
+        -- ✅ Destino: dirección si existe, si no la parada
+        COALESCE(d.lat,  pa.lat)           AS consumidor_lat,
+        COALESCE(d.lng,  pa.lng)           AS consumidor_lng,
+        COALESCE(d.direccion, pa.nombre)   AS consumidor_direccion
       FROM pedidos p
       LEFT JOIN usuarios ur  ON ur.id = p.repartidor_id
       LEFT JOIN detalles_pedido dp ON dp.pedido_id = p.id
       LEFT JOIN productos pr ON pr.id = dp.producto_id
       LEFT JOIN usuarios up  ON up.id = pr.productor_id
-      LEFT JOIN direcciones d ON d.id = p.direccion_id
+      LEFT JOIN direcciones d  ON d.id  = p.direccion_id
+      LEFT JOIN paradas     pa ON pa.id = p.parada_id
       WHERE p.id = $1 AND p.consumidor_id = $2
       LIMIT 1
     `, [pedidoId, consumidorId]);
