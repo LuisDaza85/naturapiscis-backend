@@ -15,24 +15,16 @@ const sendPushNotification = async (pushToken, title, body, data = {}) => {
     console.log('⚠️ Push token ausente');
     return;
   }
-
   try {
     const expo = await getExpo();
     if (!Expo.isExpoPushToken(pushToken)) {
       console.log('⚠️ Push token inválido:', pushToken);
       return;
     }
-
     const message = {
-      to: pushToken,
-      sound: 'default',
-      title,
-      body,
-      data,
-      priority: 'high',
-      channelId: 'orders',
+      to: pushToken, sound: 'default',
+      title, body, data, priority: 'high', channelId: 'orders',
     };
-
     const chunks = expo.chunkPushNotifications([message]);
     for (const chunk of chunks) {
       const tickets = await expo.sendPushNotificationsAsync(chunk);
@@ -43,7 +35,8 @@ const sendPushNotification = async (pushToken, title, body, data = {}) => {
   }
 };
 
-// ✅ Notificar que el pedido está en camino
+// ── Notificaciones específicas ────────────────────────────────
+
 const notificarEnCamino = async (pushToken, pedidoId, nombreConductor) => {
   await sendPushNotification(
     pushToken,
@@ -53,7 +46,6 @@ const notificarEnCamino = async (pushToken, pedidoId, nombreConductor) => {
   );
 };
 
-// ✅ Notificar que el pedido fue entregado
 const notificarEntregado = async (pushToken, pedidoId) => {
   await sendPushNotification(
     pushToken,
@@ -63,7 +55,6 @@ const notificarEntregado = async (pushToken, pedidoId) => {
   );
 };
 
-// ✅ Notificar nuevo pedido al productor
 const notificarNuevoPedido = async (pushToken, pedidoId, clienteNombre, total) => {
   await sendPushNotification(
     pushToken,
@@ -73,7 +64,6 @@ const notificarNuevoPedido = async (pushToken, pedidoId, clienteNombre, total) =
   );
 };
 
-// ✅ Notificar que el pedido fue confirmado
 const notificarConfirmado = async (pushToken, pedidoId) => {
   await sendPushNotification(
     pushToken,
@@ -83,10 +73,39 @@ const notificarConfirmado = async (pushToken, pedidoId) => {
   );
 };
 
+// ✅ NUEVO: Notificar al consumidor que el productor pesó su pedido
+const notificarPesado = async (pushToken, pedidoId, cantidadPescados, pesoKg, precioFinal, minutosConfirmacion) => {
+  await sendPushNotification(
+    pushToken,
+    '⚖️ ¡Tu pedido fue pesado!',
+    `${cantidadPescados} pescado(s) → ${pesoKg} kg → Bs. ${precioFinal}. Tienes ${minutosConfirmacion} min para confirmar.`,
+    {
+      type: 'pesado',
+      pedidoId,
+      cantidadPescados,
+      pesoKg,
+      precioFinal,
+      screen: 'MisPedidos',
+    }
+  );
+};
+
+// ✅ NUEVO: Notificar al consumidor que su confirmación expiró
+const notificarPrecioExpirado = async (pushToken, pedidoId) => {
+  await sendPushNotification(
+    pushToken,
+    '⏰ Pedido cancelado por tiempo',
+    `Tu pedido #${pedidoId} fue cancelado porque no confirmaste el precio a tiempo.`,
+    { type: 'expirado', pedidoId, screen: 'MisPedidos' }
+  );
+};
+
 module.exports = {
   sendPushNotification,
   notificarEnCamino,
   notificarEntregado,
   notificarNuevoPedido,
   notificarConfirmado,
+  notificarPesado,
+  notificarPrecioExpirado,
 };

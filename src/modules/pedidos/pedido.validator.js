@@ -1,7 +1,9 @@
-// pedido.validator.js - Validaciones para Pedidos
+// src/modules/pedidos/pedido.validator.js
 const { body, param, query } = require('express-validator');
+const { PESO_MINIMO_GRAMOS } = require('../../constants/estados');
 
 const pedidoValidator = {
+
   crearPedido: [
     body('direccion_id')
       .optional()
@@ -16,7 +18,7 @@ const pedidoValidator = {
     body('metodo_envio')
       .notEmpty()
       .withMessage('El método de envío es obligatorio')
-      .isIn(['domicilio', 'retiro', 'pickup', 'parada']) // ✅ agregado 'parada'
+      .isIn(['domicilio', 'retiro', 'pickup', 'parada'])
       .withMessage('Método de envío no válido'),
 
     body('items')
@@ -27,9 +29,10 @@ const pedidoValidator = {
       .isInt({ min: 1 })
       .withMessage('ID de producto inválido'),
 
+    // ✅ cantidad = número de pescados (mínimo 1)
     body('items.*.cantidad')
       .isInt({ min: 1 })
-      .withMessage('La cantidad debe ser al menos 1'),
+      .withMessage('La cantidad debe ser al menos 1 pescado'),
 
     body('items.*.precio')
       .isFloat({ min: 0 })
@@ -48,12 +51,42 @@ const pedidoValidator = {
       .isInt({ min: 1 })
       .withMessage('ID de pedido inválido'),
 
-    // Aceptamos cualquier variante — el service la normaliza antes de validar
     body('nuevoEstado')
       .notEmpty()
       .withMessage('El nuevo estado es obligatorio')
       .isString()
       .withMessage('El estado debe ser un texto'),
+  ],
+
+  // ✅ NUEVO: validar registro de peso
+  registrarPeso: [
+    param('id')
+      .isInt({ min: 1 })
+      .withMessage('ID de pedido inválido'),
+
+    body('cantidad_pescados')
+      .notEmpty()
+      .withMessage('La cantidad de pescados es obligatoria')
+      .isInt({ min: 1 })
+      .withMessage('La cantidad de pescados debe ser al menos 1'),
+
+    body('peso_real_kg')
+      .notEmpty()
+      .withMessage('El peso real en kg es obligatorio')
+      .isFloat({ min: 0.001 })
+      .withMessage('El peso debe ser mayor a 0 kg')
+      .custom((value, { req }) => {
+        // Validar peso mínimo promedio por pescado
+        const cantidad   = parseInt(req.body.cantidad_pescados);
+        const pesoGramos = parseFloat(value) * 1000;
+        if (cantidad > 0 && pesoGramos / cantidad < PESO_MINIMO_GRAMOS) {
+          throw new Error(
+            `El peso promedio por pescado (${(pesoGramos / cantidad).toFixed(0)}g) ` +
+            `es menor al mínimo permitido (${PESO_MINIMO_GRAMOS}g)`
+          );
+        }
+        return true;
+      }),
   ],
 
   obtenerPorId: [
@@ -65,7 +98,11 @@ const pedidoValidator = {
   obtenerHistorial: [
     query('estado')
       .optional()
-      .isIn(['pendiente', 'confirmado', 'en preparacion', 'en camino', 'entregado', 'cancelado'])
+      .isIn([
+        'pendiente', 'confirmado', 'preparando', 'pesado',
+        'esperando_confirmacion', 'listo_para_recoger',
+        'en_camino', 'entregado', 'cancelado',
+      ])
       .withMessage('Estado no válido'),
 
     query('fecha_desde')

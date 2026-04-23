@@ -1,120 +1,30 @@
-// pedido.routes.js - Rutas para Pedidos
-const express = require('express');
-const router = express.Router();
-const pedidoController = require('./pedido.controller');
-const pedidoValidator = require('./pedido.validator');
+// src/modules/pedidos/pedido.routes.js
+const express    = require('express');
+const router     = express.Router();
+const pedidoController  = require('./pedido.controller');
+const pedidoValidator   = require('./pedido.validator');
 const { isAuthenticated, hasRole } = require('../../middlewares/auth.middleware');
 const { validate } = require('../../middlewares/validation.middleware');
-
-// ✅ Importar controller de repartidor para el tracking
 const repartidorController = require('../repartidor/repartidor.controller');
 
-// ============================================================================
-// RUTAS PROTEGIDAS - Requieren autenticación
-// ============================================================================
+// ── GET /api/pedidos ──────────────────────────────────────────
+router.get('/',          isAuthenticated, pedidoController.obtenerPedidos);
+router.get('/recientes', isAuthenticated, pedidoController.obtenerPedidosRecientes);
+router.get('/recibidos', isAuthenticated, hasRole('productor'), pedidoController.obtenerPedidosRecibidos);
+router.get('/historial', isAuthenticated, pedidoValidator.obtenerHistorial, validate, pedidoController.obtenerHistorial);
+router.get('/admin/todos', isAuthenticated, hasRole('admin'), pedidoController.obtenerTodosPedidos);
 
-/**
- * @route   GET /api/pedidos
- * @desc    Obtener todos los pedidos del usuario
- * @access  Private (Consumidor/Productor)
- */
-router.get(
-  '/',
-  isAuthenticated,
-  pedidoController.obtenerPedidos
-);
+// ── Tracking (antes de /:id para que Express no lo confunda) ──
+router.get('/:id/tracking', isAuthenticated, repartidorController.getTracking);
 
-/**
- * @route   GET /api/pedidos/recientes
- * @desc    Obtener últimos 5 pedidos del usuario
- * @access  Private (Consumidor)
- */
-router.get(
-  '/recientes',
-  isAuthenticated,
-  pedidoController.obtenerPedidosRecientes
-);
+// ── GET /api/pedidos/:id ──────────────────────────────────────
+router.get('/:id', isAuthenticated, pedidoValidator.obtenerPorId, validate, pedidoController.obtenerPedidoPorId);
 
-/**
- * @route   GET /api/pedidos/recibidos
- * @desc    Obtener pedidos recibidos por el productor
- * @access  Private (Productor)
- */
-router.get(
-  '/recibidos',
-  isAuthenticated,
-  hasRole('productor'),
-  pedidoController.obtenerPedidosRecibidos
-);
+// ── POST /api/pedidos ─────────────────────────────────────────
+router.post('/', isAuthenticated, pedidoValidator.crearPedido, validate, pedidoController.crearPedido);
 
-/**
- * @route   GET /api/pedidos/historial
- * @desc    Obtener historial de pedidos con filtros
- * @access  Private (Consumidor)
- */
-router.get(
-  '/historial',
-  isAuthenticated,
-  pedidoValidator.obtenerHistorial,
-  validate,
-  pedidoController.obtenerHistorial
-);
-
-/**
- * @route   GET /api/pedidos/admin/todos
- * @desc    Obtener TODOS los pedidos (solo admin)
- * @access  Private (Admin)
- */
-router.get(
-  '/admin/todos',
-  isAuthenticated,
-  hasRole('admin'),
-  pedidoController.obtenerTodosPedidos
-);
-
-/**
- * @route   GET /api/pedidos/:id/tracking
- * @desc    Seguimiento en tiempo real del pedido (consumidor)
- * @access  Private (Consumidor dueño del pedido)
- * IMPORTANTE: debe ir ANTES de /:id para que Express no lo confunda
- */
-router.get(
-  '/:id/tracking',
-  isAuthenticated,
-  repartidorController.getTracking
-);
-
-/**
- * @route   GET /api/pedidos/:id
- * @desc    Obtener un pedido por ID
- * @access  Private (Usuario dueño del pedido)
- */
-router.get(
-  '/:id',
-  isAuthenticated,
-  pedidoValidator.obtenerPorId,
-  validate,
-  pedidoController.obtenerPedidoPorId
-);
-
-/**
- * @route   POST /api/pedidos
- * @desc    Crear un nuevo pedido
- * @access  Private (Consumidor)
- */
-router.post(
-  '/',
-  isAuthenticated,
-  pedidoValidator.crearPedido,
-  validate,
-  pedidoController.crearPedido
-);
-
-/**
- * @route   PUT /api/pedidos/:id/estado
- * @desc    Actualizar estado del pedido
- * @access  Private (Productor)
- */
+// ── PUT /api/pedidos/:id/estado ───────────────────────────────
+// Solo productores — cambio de estado general
 router.put(
   '/:id/estado',
   isAuthenticated,
@@ -122,6 +32,36 @@ router.put(
   pedidoValidator.actualizarEstado,
   validate,
   pedidoController.actualizarEstado
+);
+
+// ── PUT /api/pedidos/:id/pesar ────────────────────────────────
+// ✅ NUEVO: Productor registra peso real → calcula precio final → notifica consumidor
+// Body: { cantidad_pescados: int, peso_real_kg: float }
+router.put(
+  '/:id/pesar',
+  isAuthenticated,
+  hasRole('productor'),
+  pedidoValidator.registrarPeso,
+  validate,
+  pedidoController.registrarPeso
+);
+
+// ── POST /api/pedidos/:id/confirmar-precio ────────────────────
+// ✅ NUEVO: Consumidor acepta el precio pesado (dentro de 115 min)
+router.post(
+  '/:id/confirmar-precio',
+  isAuthenticated,
+  hasRole('consumidor'),
+  pedidoController.confirmarPrecio
+);
+
+// ── POST /api/pedidos/:id/rechazar-precio ─────────────────────
+// ✅ NUEVO: Consumidor rechaza el precio pesado → cancela el pedido
+router.post(
+  '/:id/rechazar-precio',
+  isAuthenticated,
+  hasRole('consumidor'),
+  pedidoController.rechazarPrecio
 );
 
 module.exports = router;

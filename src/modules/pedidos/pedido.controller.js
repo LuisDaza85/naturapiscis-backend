@@ -1,8 +1,9 @@
-// pedido.controller.js - Controlador para Pedidos
+// src/modules/pedidos/pedido.controller.js
 const pedidoService = require('./pedido.service');
 const { successResponse, errorResponse } = require('../../utils/response');
 
 class PedidoController {
+
   async obtenerPedidos(req, res) {
     try {
       const { id: usuarioId } = req.user;
@@ -46,9 +47,7 @@ class PedidoController {
 
   async crearPedido(req, res) {
     try {
-      // ✅ Log para debug
       console.log('📦 Body recibido:', JSON.stringify(req.body));
-
       const { id: usuario_id } = req.user;
       const {
         direccion_id, direccion, metodo_pago_id, metodo_envio,
@@ -57,19 +56,9 @@ class PedidoController {
       } = req.body;
 
       const pedidoData = {
-        usuario_id,
-        direccion_id,
-        direccion,
-        metodo_pago_id,
-        metodo_pago,
-        metodo_envio,
-        items,
-        notas,
-        subtotal,
-        costo_envio,
-        total,
-        parada_id,
-        comprobante_pago,
+        usuario_id, direccion_id, direccion, metodo_pago_id,
+        metodo_pago, metodo_envio, items, notas, subtotal,
+        costo_envio, total, parada_id, comprobante_pago,
       };
 
       const pedido = await pedidoService.crearPedido(pedidoData);
@@ -92,12 +81,59 @@ class PedidoController {
     }
   }
 
+  // ✅ NUEVO: Productor registra el peso real de los pescados
+  // PUT /api/pedidos/:id/pesar
+  // Body: { cantidad_pescados: number, peso_real_kg: number }
+  async registrarPeso(req, res) {
+    try {
+      const { id } = req.params;
+      const { cantidad_pescados, peso_real_kg } = req.body;
+      const { rol } = req.user;
+
+      const pedido = await pedidoService.registrarPeso(
+        parseInt(id),
+        parseInt(cantidad_pescados),
+        parseFloat(peso_real_kg),
+        rol
+      );
+
+      return successResponse(res, pedido, `Peso registrado. Total: Bs. ${parseFloat(pedido.precio_final).toFixed(2)}. El consumidor tiene ${require('../../constants/estados').MINUTOS_CONFIRMACION} min para confirmar.`);
+    } catch (error) {
+      return errorResponse(res, error.message, error.statusCode || 500);
+    }
+  }
+
+  // ✅ NUEVO: Consumidor confirma el precio pesado
+  // POST /api/pedidos/:id/confirmar-precio
+  async confirmarPrecio(req, res) {
+    try {
+      const { id } = req.params;
+      const { id: consumidorId } = req.user;
+      const pedido = await pedidoService.confirmarPrecio(parseInt(id), consumidorId);
+      return successResponse(res, pedido, '¡Precio confirmado! Tu pedido avanza a "Listo para recoger".');
+    } catch (error) {
+      return errorResponse(res, error.message, error.statusCode || 500);
+    }
+  }
+
+  // ✅ NUEVO: Consumidor rechaza el precio pesado → cancela
+  // POST /api/pedidos/:id/rechazar-precio
+  async rechazarPrecio(req, res) {
+    try {
+      const { id } = req.params;
+      const { id: consumidorId } = req.user;
+      const pedido = await pedidoService.rechazarPrecio(parseInt(id), consumidorId);
+      return successResponse(res, pedido, 'Pedido cancelado por rechazo de precio.');
+    } catch (error) {
+      return errorResponse(res, error.message, error.statusCode || 500);
+    }
+  }
+
   async obtenerHistorial(req, res) {
     try {
       const { id: usuarioId } = req.user;
       const { estado, fecha_desde, fecha_hasta } = req.query;
-      const filtros = { estado, fecha_desde, fecha_hasta };
-      const pedidos = await pedidoService.obtenerHistorial(usuarioId, filtros);
+      const pedidos = await pedidoService.obtenerHistorial(usuarioId, { estado, fecha_desde, fecha_hasta });
       return successResponse(res, pedidos, 'Historial de pedidos obtenido');
     } catch (error) {
       return errorResponse(res, error.message, error.statusCode || 500);
