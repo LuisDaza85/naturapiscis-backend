@@ -95,7 +95,7 @@ const apiLimiter = rateLimit({
 const authLimiter = rateLimit({
   ...rateLimitConfig,
   windowMs: 15 * 60 * 1000,  // 15 minutos
-  max: 5,                     // 5 intentos
+  max: 50,                     // 5 intentos
   message: 'Demasiados intentos de inicio de sesión. Por favor intenta de nuevo en 15 minutos',
   
   // Solo contar requests fallidos para login
